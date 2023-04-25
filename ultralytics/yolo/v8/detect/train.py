@@ -11,7 +11,7 @@ from ultralytics.yolo.data import build_dataloader
 from ultralytics.yolo.data.dataloaders.v5loader import create_dataloader
 from ultralytics.yolo.engine.trainer import BaseTrainer
 from ultralytics.yolo.utils import DEFAULT_CFG, RANK, colorstr
-from ultralytics.yolo.utils.loss import BboxLoss
+from ultralytics.yolo.utils.loss import BboxLoss, EdgeCoordinateLoss
 from ultralytics.yolo.utils.ops import xywh2xyxy
 from ultralytics.yolo.utils.plotting import plot_images, plot_labels, plot_results
 from ultralytics.yolo.utils.tal import TaskAlignedAssigner, dist2bbox, make_anchors
@@ -134,6 +134,7 @@ class Loss:
 
         self.assigner = TaskAlignedAssigner(topk=10, num_classes=self.nc, alpha=0.5, beta=6.0)
         self.bbox_loss = BboxLoss(m.reg_max - 1, use_dfl=self.use_dfl).to(device)
+        self.xyloss = EdgeCoordinateLoss(edge_threshold=5)
         self.proj = torch.arange(m.reg_max, dtype=torch.float, device=device)
 
     def preprocess(self, targets, batch_size, scale_tensor):
@@ -201,10 +202,14 @@ class Loss:
         if fg_mask.sum():
             loss[0], loss[2] = self.bbox_loss(pred_distri, pred_bboxes, anchor_points, target_bboxes, target_scores,
                                               target_scores_sum, fg_mask)
+        # delta x,y losses
+        loss[3], loss[4] = self.xyloss(pred_bboxes, target_bboxes)
 
         loss[0] *= self.hyp.box  # box gain
         loss[1] *= self.hyp.cls  # cls gain
         loss[2] *= self.hyp.dfl  # dfl gain
+        loss[3] *= self.hyp.deltax  # delta x gain
+        loss[4] *= self.hyp.deltay  # delta y gain
 
         return loss.sum() * batch_size, loss.detach()  # loss(box, cls, dfl)
 

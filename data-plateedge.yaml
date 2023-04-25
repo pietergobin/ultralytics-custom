@@ -1,0 +1,9 @@
+colors:
+- - 59
+  - 248
+  - 28
+names:
+- Plate Border Line
+nc: 1
+train: C:\Users\E216825\Documents\AI Experiments\UnilinAI\plateedge\yolo-format\images\train
+val: C:\Users\E216825\Documents\AI Experiments\UnilinAI\plateedge\yolo-format\images\val

@@ -73,3 +73,56 @@ class KeypointLoss(nn.Module):
         # e = d / (2 * (area * self.sigmas) ** 2 + 1e-9)  # from formula
         e = d / (2 * self.sigmas) ** 2 / (area + 1e-9) / 2  # from cocoeval
         return kpt_loss_factor * ((1 - torch.exp(-e)) * kpt_mask).mean()
+
+
+class EdgeCoordinateLoss(nn.Module):
+
+    def __init__(self, edge_threshold: int) -> None:
+        super().__init__()
+        self.threshold = edge_threshold
+
+    def forward(self, pred_bboxes, target_bboxes):
+        """
+        Calculates the sum of euclidian distances between the target cornerpoint and the predicted cornerpoint
+        """
+        bb_x_topleft = target_bboxes[..., 0]
+        bb_y_topleft = target_bboxes[..., 1]
+
+        quadrant_0_mask = (bb_y_topleft < self.threshold) & (bb_x_topleft < self.threshold)
+        quadrant_1_mask = (bb_y_topleft < self.threshold) & (bb_x_topleft > self.threshold)
+        quadrant_2_mask = (bb_y_topleft > self.threshold) & (bb_x_topleft < self.threshold)
+        quadrant_3_mask = (bb_y_topleft > self.threshold) & (bb_x_topleft > self.threshold)
+
+        quadrant_0_pred, quadrant_0_target = pred_bboxes[quadrant_0_mask], target_bboxes[quadrant_0_mask]
+        quadrant_1_pred, quadrant_1_target = pred_bboxes[quadrant_1_mask], target_bboxes[quadrant_1_mask]
+        quadrant_2_pred, quadrant_2_target = pred_bboxes[quadrant_2_mask], target_bboxes[quadrant_2_mask]
+        quadrant_3_pred, quadrant_3_target = pred_bboxes[quadrant_3_mask], target_bboxes[quadrant_3_mask]
+
+        delta_x = self.get_euclidean_dist(quadrant_0_pred[..., 2], quadrant_0_target[..., 2]) + \
+                  self.get_euclidean_dist(quadrant_1_pred[..., 0], quadrant_1_target[..., 0]) + \
+                  self.get_euclidean_dist(quadrant_2_pred[..., 2], quadrant_2_target[..., 2]) + \
+                  self.get_euclidean_dist(quadrant_3_pred[..., 0], quadrant_3_target[..., 0])
+
+        delta_y = self.get_euclidean_dist(quadrant_0_pred[..., 3], quadrant_0_target[..., 3]) + \
+                  self.get_euclidean_dist(quadrant_1_pred[..., 3], quadrant_1_target[..., 3]) + \
+                  self.get_euclidean_dist(quadrant_2_pred[..., 1], quadrant_2_target[..., 1]) + \
+                  self.get_euclidean_dist(quadrant_3_pred[..., 1], quadrant_3_target[..., 1])
+
+        return torch.sum(delta_x), torch.sum(delta_y)
+
+    @staticmethod
+    def get_euclidean_dist(t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
+        return (t2 - t1).pow(2).sqrt()
+
+    @staticmethod
+    def get_xy_coordinates(BB_truth, BB_pred, quadrant):
+        if quadrant == 0:
+            return BB_truth[2], BB_truth[3], BB_pred[2], BB_pred[3]
+        elif quadrant == 1:
+            return BB_truth[0], BB_truth[3], BB_pred[0], BB_pred[3]
+        elif quadrant == 2:
+            return BB_truth[2], BB_truth[1], BB_pred[2], BB_pred[1]
+        elif quadrant == 3:
+            return BB_truth[0], BB_truth[1], BB_pred[0], BB_pred[1]
+        else:
+            return None, None, None, None
