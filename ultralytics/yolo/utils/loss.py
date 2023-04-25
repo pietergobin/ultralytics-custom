@@ -108,21 +108,10 @@ class EdgeCoordinateLoss(nn.Module):
                   self.get_euclidean_dist(quadrant_2_pred[..., 1], quadrant_2_target[..., 1]),
                   self.get_euclidean_dist(quadrant_3_pred[..., 1], quadrant_3_target[..., 1])])
 
-        return torch.sum(delta_x), torch.sum(delta_y)
+        return torch.mean(delta_x), torch.mean(delta_y)
 
     @staticmethod
     def get_euclidean_dist(t1: torch.Tensor, t2: torch.Tensor) -> torch.Tensor:
         return (t2 - t1).pow(2).sqrt()
 
-    @staticmethod
-    def get_xy_coordinates(BB_truth, BB_pred, quadrant):
-        if quadrant == 0:
-            return BB_truth[2], BB_truth[3], BB_pred[2], BB_pred[3]
-        elif quadrant == 1:
-            return BB_truth[0], BB_truth[3], BB_pred[0], BB_pred[3]
-        elif quadrant == 2:
-            return BB_truth[2], BB_truth[1], BB_pred[2], BB_pred[1]
-        elif quadrant == 3:
-            return BB_truth[0], BB_truth[1], BB_pred[0], BB_pred[1]
-        else:
-            return None, None, None, None
+
