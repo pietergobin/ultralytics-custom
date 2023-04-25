@@ -98,15 +98,15 @@ class EdgeCoordinateLoss(nn.Module):
         quadrant_2_pred, quadrant_2_target = pred_bboxes[quadrant_2_mask], target_bboxes[quadrant_2_mask]
         quadrant_3_pred, quadrant_3_target = pred_bboxes[quadrant_3_mask], target_bboxes[quadrant_3_mask]
 
-        delta_x = self.get_euclidean_dist(quadrant_0_pred[..., 2], quadrant_0_target[..., 2]).add(
-            self.get_euclidean_dist(quadrant_1_pred[..., 0], quadrant_1_target[..., 0])).add(
-            self.get_euclidean_dist(quadrant_2_pred[..., 2], quadrant_2_target[..., 2])).add(
-            self.get_euclidean_dist(quadrant_3_pred[..., 0], quadrant_3_target[..., 0]))
+        delta_x = torch.cat([self.get_euclidean_dist(quadrant_0_pred[..., 2], quadrant_0_target[..., 2]),
+            self.get_euclidean_dist(quadrant_1_pred[..., 0], quadrant_1_target[..., 0]),
+            self.get_euclidean_dist(quadrant_2_pred[..., 2], quadrant_2_target[..., 2]),
+            self.get_euclidean_dist(quadrant_3_pred[..., 0], quadrant_3_target[..., 0])])
 
-        delta_y = self.get_euclidean_dist(quadrant_0_pred[..., 3], quadrant_0_target[..., 3]).add(
-                  self.get_euclidean_dist(quadrant_1_pred[..., 3], quadrant_1_target[..., 3])).add(
-                  self.get_euclidean_dist(quadrant_2_pred[..., 1], quadrant_2_target[..., 1])).add(
-                  self.get_euclidean_dist(quadrant_3_pred[..., 1], quadrant_3_target[..., 1]))
+        delta_y = torch.cat([self.get_euclidean_dist(quadrant_0_pred[..., 3], quadrant_0_target[..., 3]),
+                  self.get_euclidean_dist(quadrant_1_pred[..., 3], quadrant_1_target[..., 3]),
+                  self.get_euclidean_dist(quadrant_2_pred[..., 1], quadrant_2_target[..., 1]),
+                  self.get_euclidean_dist(quadrant_3_pred[..., 1], quadrant_3_target[..., 1])])
 
         return torch.sum(delta_x), torch.sum(delta_y)
 
